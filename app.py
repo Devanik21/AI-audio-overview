@@ -32,7 +32,7 @@ def extract_text_from_pdf(uploaded_file):
 # --- Function to generate summary using Gemini ---
 def generate_summary(text, api_key):
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel("gemini-2.0-flash")
     prompt = "Summarize this PDF content in a friendly voiceover style overview:\n\n" + text
     response = model.generate_content(prompt)
     return response.text
