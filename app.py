@@ -1,131 +1,169 @@
 import streamlit as st
-import fitz  # PyMuPDF
+import fitz  # PyMuPDF for PDF text extraction
 import tempfile
 import os
 import base64
 import google.generativeai as genai
 from gtts import gTTS
-from langdetect import detect
+from langdetect import detect, LangDetectException
 
-# --- Page Setup ---
-st.set_page_config(page_title="PDF to Audio Summary", layout="centered")
-st.title("Gemini-Powered PDF Audio Overview")
+# ====== PAGE CONFIGURATION ======
+st.set_page_config(page_title="PDF Audio Summarizer", layout="wide")
 
+# ====== STYLE ======
 st.markdown("""
 <style>
     .step-box {
-        background-color: #18071f;
-        padding: 1rem;
-        border-radius: 1rem;
-        margin-bottom: 1rem;
-        border-left: 5px solid #4CAF50;
+        background: #e7f5ff;
+        padding: 1rem 1.2rem;
+        border-radius: 12px;
+        margin: 10px 0;
+        border-left: 6px solid #3b82f6;
         font-size: 1.1rem;
+        font-weight: 500;
+        color: #0c4a6e;
+    }
+    .header-text {
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.1rem;
+        color: #1e293b;
+    }
+    .subheader-text {
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 1.5rem;
+    }
+    .footer-text {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin-top: 3rem;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Sidebar for Gemini API Key and Language ---
+# ====== SIDEBAR: API KEY & LANGUAGE ======
 with st.sidebar:
-    st.title("Gemini API")
-    api_key = st.text_input("Enter your Gemini API key:", type="password")
+    st.header("Gemini API Settings")
+    api_key = st.text_input("Enter your Gemini API key:", type="password", help="Needed to generate AI summary")
 
-    st.markdown("Language Options")
-    lang_auto = st.checkbox("Auto-detect language from PDF", value=True)
+    st.markdown("---")
+    st.header("Language Options")
+    auto_lang = st.checkbox("Auto-detect language from PDF", value=True)
 
-    languages = {
+    LANGUAGES = {
         "English": "en", "Hindi": "hi", "Spanish": "es", "French": "fr", "German": "de",
         "Italian": "it", "Portuguese": "pt", "Russian": "ru", "Chinese (Mandarin)": "zh-CN",
         "Japanese": "ja", "Korean": "ko", "Arabic": "ar", "Turkish": "tr", "Bengali": "bn",
         "Tamil": "ta", "Telugu": "te", "Gujarati": "gu", "Malayalam": "ml", "Urdu": "ur",
-        "Indonesian": "id"
+        "Indonesian": "id", "Vietnamese": "vi", "Polish": "pl", "Dutch": "nl", "Swedish": "sv"
     }
 
-    selected_lang = st.selectbox("Choose language (if not auto-detecting):", list(languages.keys()), index=0)
-    lang_code = languages[selected_lang]
+    chosen_lang = st.selectbox("Select language (if not auto-detecting):", options=list(LANGUAGES.keys()), index=0)
+    lang_code = LANGUAGES[chosen_lang]
 
     st.markdown("---")
-    st.markdown("Made with love by Prince")
+    st.markdown("<small>Made with ❤️ by Prince</small>", unsafe_allow_html=True)
 
-# --- Function to extract text and page info ---
-def extract_text_from_pdf(uploaded_file):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-        tmp_file.write(uploaded_file.read())
-        tmp_file_path = tmp_file.name
+# ====== FUNCTIONS ======
+def extract_text_from_pdf(uploaded_pdf) -> (str, int):
+    """Extracts text and page count from uploaded PDF."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(uploaded_pdf.read())
+        tmp_path = tmp.name
 
     text = ""
-    page_count = 0
-    with fitz.open(tmp_file_path) as doc:
-        page_count = len(doc)
+    with fitz.open(tmp_path) as doc:
         for page in doc:
             text += page.get_text()
+        page_count = len(doc)
 
-    os.remove(tmp_file_path)
+    os.remove(tmp_path)
     return text.strip(), page_count
 
-# --- Gemini Summary Function ---
-def generate_summary(text, api_key):
-    genai.configure(api_key=api_key)
+
+def generate_ai_summary(text: str, key: str) -> str:
+    """Generates summary from text using Gemini API."""
+    genai.configure(api_key=key)
     model = genai.GenerativeModel("gemini-2.0-flash")
-    prompt = "Summarize this PDF content in a friendly, voiceover-style overview:\n\n" + text
+    prompt = f"Summarize this PDF content in a clear, friendly voiceover style:\n\n{text}"
     response = model.generate_content(prompt)
     return response.text
 
-# --- TTS Function ---
-def text_to_audio(text, lang='en', filename="summary.mp3"):
-    tts = gTTS(text=text, lang=lang)
+
+def text_to_speech(text: str, language: str = 'en', filename: str = "summary.mp3") -> str:
+    """Converts text to speech and saves as mp3."""
+    tts = gTTS(text=text, lang=language)
     tts.save(filename)
     return filename
 
-# --- Upload PDF ---
-uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
 
-if uploaded_file:
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        st.success("File Uploaded")
-    with col2:
-        st.markdown(f"**Filename:** `{uploaded_file.name}`")
+def create_audio_download_link(audio_file: str) -> str:
+    """Creates a downloadable audio link."""
+    with open(audio_file, "rb") as f:
+        data = f.read()
+    b64 = base64.b64encode(data).decode()
+    return f'<a href="data:audio/mp3;base64,{b64}" download="summary.mp3">Download Audio</a>'
 
+
+# ====== MAIN UI ======
+st.markdown('<p class="header-text">PDF to Audio Summary</p>', unsafe_allow_html=True)
+st.markdown('<p class="subheader-text">Upload a PDF and get a spoken summary generated by AI.</p>', unsafe_allow_html=True)
+
+uploaded_pdf = st.file_uploader("Upload your PDF file here", type=["pdf"])
+
+if uploaded_pdf:
+    st.info(f"📄 File selected: **{uploaded_pdf.name}**")
     if st.button("Generate Audio Overview"):
         if not api_key:
-            st.warning("Please enter your Gemini API key in the sidebar!")
+            st.error("⚠️ Please enter your Gemini API key in the sidebar.")
         else:
-            with st.spinner("Extracting PDF content..."):
-                pdf_text, pages = extract_text_from_pdf(uploaded_file)
+            # Step 1: Extract text
+            with st.spinner("Extracting text from PDF..."):
+                pdf_text, total_pages = extract_text_from_pdf(uploaded_pdf)
+            word_count = len(pdf_text.split())
+            st.markdown(f'<div class="step-box">Extracted <b>{word_count}</b> words from <b>{total_pages}</b> pages.</div>', unsafe_allow_html=True)
 
-            if pdf_text:
-                word_count = len(pdf_text.split())
-                st.markdown(f"<div class='step-box'>Extracted <strong>{word_count}</strong> words from <strong>{pages}</strong> pages</div>", unsafe_allow_html=True)
-
-                # --- Auto-detect language if enabled ---
-                detected_lang = lang_code
-                if lang_auto:
-                    try:
-                        detected_lang = detect(pdf_text)
-                        st.markdown(f"<div class='step-box'>Detected Language: <strong>{detected_lang.upper()}</strong></div>", unsafe_allow_html=True)
-                    except:
-                        st.warning("Language detection failed. Using selected language instead.")
-
-                with st.spinner("Creating Gemini summary..."):
-                    summary = generate_summary(pdf_text, api_key)
-                st.markdown("<div class='step-box'>AI Summary Created</div>", unsafe_allow_html=True)
-
-                st.subheader("Summary")
-                st.write(summary)
-
-                with st.spinner("Converting to speech..."):
-                    audio_path = text_to_audio(summary, lang=detected_lang)
-                st.markdown("<div class='step-box'>Audio Conversion Done!</div>", unsafe_allow_html=True)
-
-                st.success("Processing Complete!")
-                st.audio(audio_path, format="audio/mp3")
-
-                # Download Button
-                with open(audio_path, "rb") as f:
-                    b64 = base64.b64encode(f.read()).decode()
-                    st.markdown(
-                        f'<a href="data:audio/mp3;base64,{b64}" download="summary.mp3">Download Audio</a>',
-                        unsafe_allow_html=True
-                    )
+            # Step 2: Language Detection
+            if auto_lang:
+                try:
+                    detected_lang = detect(pdf_text)
+                    st.markdown(f'<div class="step-box">Detected language: <b>{detected_lang.upper()}</b></div>', unsafe_allow_html=True)
+                except LangDetectException:
+                    detected_lang = lang_code
+                    st.warning("Failed to detect language, using the selected language instead.")
             else:
-                st.warning("Couldn't extract text from the PDF. Try another file?")
+                detected_lang = lang_code
+
+            # Step 3: Generate AI summary
+            with st.spinner("Generating AI summary..."):
+                try:
+                    summary = generate_ai_summary(pdf_text, api_key)
+                except Exception as e:
+                    st.error(f"Failed to generate summary: {e}")
+                    st.stop()
+
+            st.markdown('<div class="step-box">AI Summary generated successfully.</div>', unsafe_allow_html=True)
+            st.subheader("Summary")
+            st.write(summary)
+
+            # Step 4: Convert to speech
+            with st.spinner("Converting summary to speech..."):
+                audio_file = text_to_speech(summary, language=detected_lang)
+
+            st.markdown('<div class="step-box">Audio conversion completed!</div>', unsafe_allow_html=True)
+            st.success("✅ Processing complete!")
+
+            # Step 5: Audio player & download link
+            st.audio(audio_file, format="audio/mp3")
+            download_link = create_audio_download_link(audio_file)
+            st.markdown(download_link, unsafe_allow_html=True)
+
+            # Cleanup - optional: remove audio file after streaming
+            try:
+                os.remove(audio_file)
+            except Exception:
+                pass
+
+st.markdown('<p class="footer-text">© 2025 Prince • Made with love and tech 💻❤️</p>', unsafe_allow_html=True)
