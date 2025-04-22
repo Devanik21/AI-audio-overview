@@ -11,41 +11,31 @@ st.set_page_config(page_title=" PDF to Audio Summary", layout="centered",page_ic
 st.title("🎧 Gemini-Powered PDF Audio Overview")
 
 # --- Sidebar for Gemini API Key ---
+# --- Sidebar for Gemini API Key and Language ---
 with st.sidebar:
     st.title("🔐 Gemini API")
     api_key = st.text_input("Enter your Gemini API key:", type="password")
+
+    st.markdown("🌍 Select Voiceover Language")
+    languages = {
+        "English": "en", "Hindi": "hi", "Spanish": "es", "French": "fr", "German": "de",
+        "Italian": "it", "Portuguese": "pt", "Russian": "ru", "Chinese (Mandarin)": "zh-CN",
+        "Japanese": "ja", "Korean": "ko", "Arabic": "ar", "Turkish": "tr", "Bengali": "bn",
+        "Tamil": "ta", "Telugu": "te", "Gujarati": "gu", "Malayalam": "ml", "Urdu": "ur",
+        "Indonesian": "id"
+    }
+    selected_lang = st.selectbox("Choose language for audio summary", list(languages.keys()))
+    lang_code = languages[selected_lang]
+
     st.markdown("---")
-    st.markdown("Updated on April 2025")
+    st.markdown("Made with 💖 by Prince")
 
-# --- Function to extract text and page info ---
-def extract_text_from_pdf(uploaded_file):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-        tmp_file.write(uploaded_file.read())
-        tmp_file_path = tmp_file.name
-
-    text = ""
-    page_count = 0
-    with fitz.open(tmp_file_path) as doc:
-        page_count = len(doc)
-        for page in doc:
-            text += page.get_text()
-
-    os.remove(tmp_file_path)
-    return text.strip(), page_count
-
-# --- Gemini Summary Function ---
-def generate_summary(text, api_key):
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    prompt = "Summarize this PDF content in a friendly, voiceover-style overview:\n\n" + text
-    response = model.generate_content(prompt)
-    return response.text
-
-# --- Text-to-Speech Function ---
-def text_to_audio(text, filename="summary.mp3"):
-    tts = gTTS(text=text, lang='en')
+# --- Updated TTS function ---
+def text_to_audio(text, lang='en', filename="summary.mp3"):
+    tts = gTTS(text=text, lang=lang)
     tts.save(filename)
     return filename
+
 
 # --- Upload PDF ---
 uploaded_file = st.file_uploader("📤 Upload a PDF", type=["pdf"])
@@ -74,7 +64,8 @@ if uploaded_file:
                 st.write(summary)
 
                 with st.spinner("🎙️ Generating voiceover..."):
-                    audio_path = text_to_audio(summary)
+                    audio_path = text_to_audio(summary, lang=lang_code)
+
 
                 st.success("✅ Audio overview ready!")
                 st.audio(audio_path, format="audio/mp3")
