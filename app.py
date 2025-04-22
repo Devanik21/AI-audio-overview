@@ -14,7 +14,7 @@ st.title("Gemini-Powered PDF Audio Overview")
 st.markdown("""
 <style>
     .step-box {
-        background-color: #f5f5f5;
+        background-color: #18071f;
         padding: 1rem;
         border-radius: 1rem;
         margin-bottom: 1rem;
