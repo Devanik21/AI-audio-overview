@@ -5,218 +5,127 @@ import os
 import base64
 import google.generativeai as genai
 from gtts import gTTS
+from langdetect import detect
 
-# Page configuration with custom theme
-st.set_page_config(
-    page_title="PDF to Audio Summary",
-    page_icon="🎧",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- Page Setup ---
+st.set_page_config(page_title="\ud83d\udcc4\ud83d\udd0a PDF to Audio Summary", layout="centered")
+st.title("\ud83d\udcac\ud83c\udfbf Gemini-Powered PDF Audio Overview")
 
-# Custom CSS for modern UI
 st.markdown("""
 <style>
-    .main {
-        background-color: #f8f9fa;
-    }
-    .stApp {
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    .css-1d391kg {
-        padding: 2rem 1rem;
-    }
-    .stButton>button {
-        background-color: #5e72e4;
-        color: white;
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        border: none;
-        font-weight: bold;
-        width: 100%;
-        transition: all 0.3s;
-    }
-    .stButton>button:hover {
-        background-color: #4454c3;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-    h1, h2, h3 {
-        color: #344767;
-    }
-    .upload-section {
-        background-color: white;
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        margin-bottom: 2rem;
-    }
-    .results-section {
-        background-color: white;
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-    .sidebar .css-1d391kg {
-        background-color: #f1f3f9;
-    }
-    .stProgress .st-bo {
-        background-color: #5e72e4;
-    }
-    .api-input {
-        margin-top: 1rem;
-        margin-bottom: 2rem;
+    .step-box {
+        background-color: #f5f5f5;
+        padding: 1rem;
+        border-radius: 1rem;
+        margin-bottom: 1rem;
+        border-left: 5px solid #4CAF50;
+        font-size: 1.1rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Helper functions
+# --- Sidebar for Gemini API Key and Language ---
+with st.sidebar:
+    st.title("\ud83d\udd10 Gemini API")
+    api_key = st.text_input("Enter your Gemini API key:", type="password")
+
+    st.markdown("\u2728 Language Options")
+    lang_auto = st.checkbox("Auto-detect language from PDF", value=True)
+
+    languages = {
+        "English": "en", "Hindi": "hi", "Spanish": "es", "French": "fr", "German": "de",
+        "Italian": "it", "Portuguese": "pt", "Russian": "ru", "Chinese (Mandarin)": "zh-CN",
+        "Japanese": "ja", "Korean": "ko", "Arabic": "ar", "Turkish": "tr", "Bengali": "bn",
+        "Tamil": "ta", "Telugu": "te", "Gujarati": "gu", "Malayalam": "ml", "Urdu": "ur",
+        "Indonesian": "id"
+    }
+
+    selected_lang = st.selectbox("Choose language (if not auto-detecting):", list(languages.keys()), index=0)
+    lang_code = languages[selected_lang]
+
+    st.markdown("---")
+    st.markdown("Made with \ud83d\udc96 by Prince")
+
+# --- Function to extract text and page info ---
 def extract_text_from_pdf(uploaded_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
         tmp_file.write(uploaded_file.read())
         tmp_file_path = tmp_file.name
-    
+
     text = ""
+    page_count = 0
     with fitz.open(tmp_file_path) as doc:
         page_count = len(doc)
         for page in doc:
             text += page.get_text()
-    
+
     os.remove(tmp_file_path)
     return text.strip(), page_count
 
+# --- Gemini Summary Function ---
 def generate_summary(text, api_key):
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-2.0-flash")
-    prompt = f"""
-    Create a clear, engaging, and professional voiceover-style summary of this PDF content.
-    Focus on key points and maintain a friendly, conversational tone.
-    Keep the summary concise but comprehensive.
-    
-    PDF CONTENT:
-    {text}
-    """
+    prompt = "Summarize this PDF content in a friendly, voiceover-style overview:\n\n" + text
     response = model.generate_content(prompt)
     return response.text
 
-def text_to_audio(text, filename="summary.mp3"):
-    tts = gTTS(text=text, lang='en')
+# --- TTS Function ---
+def text_to_audio(text, lang='en', filename="summary.mp3"):
+    tts = gTTS(text=text, lang=lang)
     tts.save(filename)
     return filename
 
-def create_download_link(audio_path, filename="summary.mp3"):
-    with open(audio_path, "rb") as f:
-        b64 = base64.b64encode(f.read()).decode()
-    
-    download_link = f'''
-    <a href="data:audio/mp3;base64,{b64}" download="{filename}" 
-       style="text-decoration:none;">
-        <div style="background-color:#5e72e4; color:white; padding:12px 20px; 
-                    border-radius:8px; text-align:center; margin-top:15px; 
-                    display:flex; align-items:center; justify-content:center; 
-                    font-weight:bold; cursor:pointer; transition: all 0.3s">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" 
-                 style="margin-right:8px" viewBox="0 0 16 16">
-                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-            </svg>
-            Download Audio File
-        </div>
-    </a>
-    '''
-    return download_link
+# --- Upload PDF ---
+uploaded_file = st.file_uploader("\ud83d\udcc4 Upload a PDF", type=["pdf"])
 
-# Sidebar
-with st.sidebar:
-    st.image("https://via.placeholder.com/150x80?text=AudioPDF", width=150)
-    st.title("🎧 AudioPDF")
-    
-    st.markdown("#### Settings")
-    with st.container():
-        st.markdown('<div class="api-input">', unsafe_allow_html=True)
-        api_key = st.text_input("🔑 Gemini API Key", type="password", 
-                               help="Enter your Gemini API key here")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.markdown("---")
-    st.markdown("""
-    ### How it works
-    1. Upload your PDF
-    2. Enter your Gemini API key
-    3. Generate an audio summary
-    4. Listen or download
-    """)
-    
-    st.markdown("---")
-    st.caption("© 2025 AudioPDF | v1.2.0")
-
-# Main content
-st.markdown('<h1 style="text-align:center; margin-bottom:1.5rem">🎧 PDF to Audio Summary</h1>', 
-           unsafe_allow_html=True)
-
-# Upload section
-st.markdown('<div class="upload-section">', unsafe_allow_html=True)
-col1, col2 = st.columns([3, 2])
-with col1:
-    st.markdown("### Upload your PDF document")
-    st.markdown("We'll transform it into an engaging audio summary using Gemini AI.")
-    uploaded_file = st.file_uploader("", type=["pdf"], label_visibility="collapsed")
-
-with col2:
-    st.image("https://via.placeholder.com/300x200?text=PDF+to+Audio", width=300)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Processing section
 if uploaded_file:
-    st.markdown('<div class="results-section">', unsafe_allow_html=True)
-    
-    # File info display
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2 = st.columns([1, 3])
     with col1:
-        st.markdown("### File Details")
+        st.success("\u2705 File Uploaded")
     with col2:
         st.markdown(f"**Filename:** `{uploaded_file.name}`")
-        file_size = round(uploaded_file.size / 1024, 1)
-        st.markdown(f"**Size:** `{file_size} KB`")
-    with col3:
-        if st.button("🎧 Generate Audio", use_container_width=True):
-            if not api_key:
-                st.error("⚠️ Please enter your Gemini API key in the sidebar!")
+
+    if st.button("\ud83c\udfbf Generate Audio Overview"):
+        if not api_key:
+            st.warning("Please enter your Gemini API key in the sidebar!")
+        else:
+            with st.spinner("\ud83d\udcd6 Extracting PDF content..."):
+                pdf_text, pages = extract_text_from_pdf(uploaded_file)
+
+            if pdf_text:
+                word_count = len(pdf_text.split())
+                st.markdown(f"<div class='step-box'>\ud83d\udcc4 Extracted <strong>{word_count}</strong> words from <strong>{pages}</strong> pages</div>", unsafe_allow_html=True)
+
+                # --- Auto-detect language if enabled ---
+                detected_lang = lang_code
+                if lang_auto:
+                    try:
+                        detected_lang = detect(pdf_text)
+                        st.markdown(f"<div class='step-box'>\ud83c\udf0d Detected Language: <strong>{detected_lang.upper()}</strong></div>", unsafe_allow_html=True)
+                    except:
+                        st.warning("\u26a0\ufe0f Language detection failed. Using selected language instead.")
+
+                with st.spinner("\ud83e\udde0 Creating Gemini summary..."):
+                    summary = generate_summary(pdf_text, api_key)
+                st.markdown("<div class='step-box'>\ud83e\udd16 AI Summary Created</div>", unsafe_allow_html=True)
+
+                st.subheader("\ud83d\udccb Summary")
+                st.write(summary)
+
+                with st.spinner("\ud83c\udf99\ufe0f Converting to speech..."):
+                    audio_path = text_to_audio(summary, lang=detected_lang)
+                st.markdown("<div class='step-box'>\ud83c\udfa7 Audio Conversion Done!</div>", unsafe_allow_html=True)
+
+                st.success("\u2705 Processing Complete!")
+                st.audio(audio_path, format="audio/mp3")
+
+                # Download Button
+                with open(audio_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode()
+                    st.markdown(
+                        f'<a href="data:audio/mp3;base64,{b64}" download="summary.mp3">\ud83d\udcc5 Download Audio</a>',
+                        unsafe_allow_html=True
+                    )
             else:
-                # Extract text with progress bar
-                with st.status("Processing your PDF...", expanded=True) as status:
-                    st.write("📄 Extracting text...")
-                    pdf_text, pages = extract_text_from_pdf(uploaded_file)
-                    
-                    if not pdf_text:
-                        st.error("❌ Could not extract text from this PDF. Please try another file.")
-                    else:
-                        st.write(f"✅ Extracted {len(pdf_text.split())} words from {pages} pages")
-                        
-                        # Generate summary
-                        st.write("🤖 Creating AI summary...")
-                        summary = generate_summary(pdf_text, api_key)
-                        
-                        # Create audio
-                        st.write("🎙️ Converting to speech...")
-                        audio_filename = f"{uploaded_file.name.split('.')[0]}_summary.mp3"
-                        audio_path = text_to_audio(summary, audio_filename)
-                        
-                        status.update(label="✅ Processing complete!", state="complete")
-                
-                        # Display results
-                        st.markdown("### 📝 Summary")
-                        st.write(summary)
-                        
-                        st.markdown("### 🔊 Audio Overview")
-                        st.audio(audio_path, format="audio/mp3")
-                        
-                        # Download button
-                        st.markdown(create_download_link(audio_path, audio_filename), 
-                                   unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-else:
-    # Instructions when no file is uploaded
-    st.info("👆 Please upload a PDF document to get started")
+                st.warning("\ud83d\ude25 Couldn't extract text from the PDF. Try another file?")
