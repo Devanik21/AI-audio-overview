@@ -7,8 +7,8 @@ import google.generativeai as genai
 from gtts import gTTS
 
 # --- Page Setup ---
-st.set_page_config(page_title="📄🔊 PDF to Audio Summary", layout="centered")
-st.title("💬🎧 Gemini-Powered PDF Audio Overview")
+st.set_page_config(page_title=" PDF to Audio Summary", layout="centered",page_icon="🔊")
+st.title("🎧 Gemini-Powered PDF Audio Overview")
 
 # --- Sidebar for Gemini API Key ---
 with st.sidebar:
