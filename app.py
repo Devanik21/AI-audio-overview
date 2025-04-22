@@ -207,8 +207,7 @@ if uploaded_file:
                 
                         # Display results
                         st.markdown("### 📝 Summary")
-                        with st.expander("View Text Summary", expanded=True):
-                            st.write(summary)
+                        st.write(summary)
                         
                         st.markdown("### 🔊 Audio Overview")
                         st.audio(audio_path, format="audio/mp3")
