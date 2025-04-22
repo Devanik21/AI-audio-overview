@@ -15,7 +15,7 @@ with st.sidebar:
     st.title("🔐 Gemini API")
     api_key = st.text_input("Enter your Gemini API key:", type="password")
     st.markdown("---")
-    st.markdown("Made with 💖 by Prince")
+    st.markdown("Made with 💖 ")
 
 # --- Function to extract text and page info ---
 def extract_text_from_pdf(uploaded_file):
