@@ -64,7 +64,7 @@ with st.sidebar:
     lang_code = LANGUAGES[chosen_lang]
 
     st.markdown("---")
-    st.markdown("<small>Made with ❤️ by Prince</small>", unsafe_allow_html=True)
+    st.markdown("<small>Updated on April 2025</small>", unsafe_allow_html=True)
 
 # ====== FUNCTIONS ======
 def extract_text_from_pdf(uploaded_pdf) -> (str, int):
@@ -166,4 +166,4 @@ if uploaded_pdf:
             except Exception:
                 pass
 
-st.markdown('<p class="footer-text">© 2025 Prince • Made with love and tech 💻❤️</p>', unsafe_allow_html=True)
+st.markdown('<p class="footer-text">© v1.2.0</p>', unsafe_allow_html=True)
