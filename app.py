@@ -34,7 +34,7 @@ st.markdown("""
     .footer-text { color: #94a3b8; font-size: 0.9rem; margin-top: 3rem; text-align: center; }
     .insight-box { background: #0f2d42; padding: 0.8rem; border-radius: 8px; 
                   margin: 5px 0; border-left: 4px solid #10b981; }
-    .citation-box { background: #f9fafb; padding: 1rem; border-radius: 8px;
+    .citation-box { background: #480e59; padding: 1rem; border-radius: 8px;
                   border: 1px solid #e5e7eb; font-family: monospace; }
     .tab-content { padding: 20px 0; }
     .compare-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
