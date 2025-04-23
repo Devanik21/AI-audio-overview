@@ -28,7 +28,7 @@ st.markdown("""
 <style>
     .step-box { background: #0f2d42; padding: 1rem; border-radius: 12px;
                 margin: 10px 0; border-left: 6px solid #3b82f6;
-                font-size: 1.1rem; font-weight: 500; color: #0c4a6e; }
+                font-size: 1.1rem; font-weight: 500; color: #588ead; }
     .header-text { font-weight: 700; font-size: 2rem; color: #1e293b; }
     .subheader-text { font-weight: 600; color: #475569; margin-bottom: 1.5rem; }
     .footer-text { color: #94a3b8; font-size: 0.9rem; margin-top: 3rem; text-align: center; }
