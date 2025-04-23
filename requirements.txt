@@ -1,8 +1,14 @@
 streamlit
-google-generativeai
 PyMuPDF
+google-generativeai
 gTTS
 langdetect
 googletrans
-pillow
+pandas
+Pillow
 wordcloud
+matplotlib
+tabula-py
+python-docx
+openpyxl
+uuid
