@@ -1,11 +1,12 @@
 import streamlit as st
-import fitz  # PyMuPDF for PDF text extraction
+import fitz  # PyMuPDF
 import tempfile
 import os
 import base64
 import google.generativeai as genai
 from gtts import gTTS
 from langdetect import detect, LangDetectException
+from googletrans import Translator
 
 # ====== PAGE CONFIGURATION ======
 st.set_page_config(page_title="PDF Audio Summarizer", layout="wide")
@@ -13,40 +14,19 @@ st.set_page_config(page_title="PDF Audio Summarizer", layout="wide")
 # ====== STYLE ======
 st.markdown("""
 <style>
-    .step-box {
-        background: #e7f5ff;
-        padding: 1rem 1.2rem;
-        border-radius: 12px;
-        margin: 10px 0;
-        border-left: 6px solid #3b82f6;
-        font-size: 1.1rem;
-        font-weight: 500;
-        color: #0c4a6e;
-    }
-    .header-text {
-        font-weight: 700;
-        font-size: 2rem;
-        margin-bottom: 0.1rem;
-        color: #1e293b;
-    }
-    .subheader-text {
-        font-weight: 600;
-        color: #475569;
-        margin-bottom: 1.5rem;
-    }
-    .footer-text {
-        color: #94a3b8;
-        font-size: 0.9rem;
-        margin-top: 3rem;
-        text-align: center;
-    }
+    .step-box { background: #e7f5ff; padding: 1rem; border-radius: 12px;
+                margin: 10px 0; border-left: 6px solid #3b82f6;
+                font-size: 1.1rem; font-weight: 500; color: #0c4a6e; }
+    .header-text { font-weight: 700; font-size: 2rem; color: #1e293b; }
+    .subheader-text { font-weight: 600; color: #475569; margin-bottom: 1.5rem; }
+    .footer-text { color: #94a3b8; font-size: 0.9rem; margin-top: 3rem; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
-# ====== SIDEBAR: API KEY & LANGUAGE ======
+# ====== SIDEBAR ======
 with st.sidebar:
     st.header("Gemini API Settings")
-    api_key = st.text_input("Enter your Gemini API key:", type="password", help="Needed to generate AI summary")
+    api_key = st.text_input("Enter your Gemini API key:", type="password")
 
     st.markdown("---")
     st.header("Language Options")
@@ -60,58 +40,58 @@ with st.sidebar:
         "Indonesian": "id", "Vietnamese": "vi", "Polish": "pl", "Dutch": "nl", "Swedish": "sv"
     }
 
-    chosen_lang = st.selectbox("Select language (if not auto-detecting):", options=list(LANGUAGES.keys()), index=0)
+    chosen_lang = st.selectbox("Select language (if not auto-detecting):", list(LANGUAGES.keys()))
     lang_code = LANGUAGES[chosen_lang]
 
     st.markdown("---")
+    audio_format = st.selectbox("Choose audio format:", ["mp3", "ogg", "wav"])
     st.markdown("<small>Updated on April 2025</small>", unsafe_allow_html=True)
 
 # ====== FUNCTIONS ======
-def extract_text_from_pdf(uploaded_pdf) -> (str, int):
-    """Extracts text and page count from uploaded PDF."""
+def extract_text_from_pdf(uploaded_pdf):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(uploaded_pdf.read())
         tmp_path = tmp.name
-
     text = ""
     with fitz.open(tmp_path) as doc:
         for page in doc:
             text += page.get_text()
         page_count = len(doc)
-
     os.remove(tmp_path)
     return text.strip(), page_count
 
+def chunk_text(text, max_tokens=1500):
+    words = text.split()
+    return [' '.join(words[i:i + max_tokens]) for i in range(0, len(words), max_tokens)]
 
-def generate_ai_summary(text: str, key: str) -> str:
-    """Generates summary from text using Gemini API."""
+def generate_ai_summary(text, key):
     genai.configure(api_key=key)
     model = genai.GenerativeModel("gemini-2.0-flash")
-    prompt = f"Summarize this PDF content in a clear, friendly voiceover style:\n\n{text}"
-    response = model.generate_content(prompt)
-    return response.text
+    chunks = chunk_text(text)
+    summaries = [model.generate_content(f"Summarize this in a friendly voiceover style:\n{c}").text for c in chunks]
+    return "\n\n".join(summaries)
 
-
-def text_to_speech(text: str, language: str = 'en', filename: str = "summary.mp3") -> str:
-    """Converts text to speech and saves as mp3."""
+def text_to_speech(text, language, filename):
     tts = gTTS(text=text, lang=language)
     tts.save(filename)
     return filename
 
-
-def create_audio_download_link(audio_file: str) -> str:
-    """Creates a downloadable audio link."""
+def create_audio_download_link(audio_file):
     with open(audio_file, "rb") as f:
         data = f.read()
     b64 = base64.b64encode(data).decode()
-    return f'<a href="data:audio/mp3;base64,{b64}" download="summary.mp3">Download Audio</a>'
+    return f'<a href="data:audio/{audio_format};base64,{b64}" download="summary.{audio_format}">Download Audio</a>'
 
+def estimate_audio_duration(word_count):
+    wpm = 130
+    minutes = word_count / wpm
+    return f"{int(minutes)} min {int((minutes % 1) * 60)} sec"
 
 # ====== MAIN UI ======
 st.markdown('<p class="header-text">PDF to Audio Summary</p>', unsafe_allow_html=True)
 st.markdown('<p class="subheader-text">Upload a PDF and get a spoken summary generated by AI.</p>', unsafe_allow_html=True)
 
-uploaded_pdf = st.file_uploader("Upload your PDF file here", type=["pdf"])
+uploaded_pdf = st.file_uploader("Upload your PDF file", type=["pdf"])
 
 if uploaded_pdf:
     st.info(f"📄 File selected: **{uploaded_pdf.name}**")
@@ -119,48 +99,45 @@ if uploaded_pdf:
         if not api_key:
             st.error("⚠️ Please enter your Gemini API key in the sidebar.")
         else:
-            # Step 1: Extract text
             with st.spinner("Extracting text from PDF..."):
                 pdf_text, total_pages = extract_text_from_pdf(uploaded_pdf)
             word_count = len(pdf_text.split())
             st.markdown(f'<div class="step-box">Extracted <b>{word_count}</b> words from <b>{total_pages}</b> pages.</div>', unsafe_allow_html=True)
 
-            # Step 2: Language Detection
             if auto_lang:
                 try:
                     detected_lang = detect(pdf_text)
                     st.markdown(f'<div class="step-box">Detected language: <b>{detected_lang.upper()}</b></div>', unsafe_allow_html=True)
                 except LangDetectException:
                     detected_lang = lang_code
-                    st.warning("Failed to detect language, using the selected language instead.")
+                    st.warning("Failed to detect language, using selected option.")
             else:
                 detected_lang = lang_code
 
-            # Step 3: Generate AI summary
             with st.spinner("Generating AI summary..."):
                 try:
                     summary = generate_ai_summary(pdf_text, api_key)
                 except Exception as e:
-                    st.error(f"Failed to generate summary: {e}")
+                    st.error(f"Summary generation failed: {e}")
                     st.stop()
 
             st.markdown('<div class="step-box">AI Summary generated successfully.</div>', unsafe_allow_html=True)
             st.subheader("Summary")
             st.write(summary)
+            duration = estimate_audio_duration(len(summary.split()))
+            st.caption(f"Estimated audio length: {duration}")
 
-            # Step 4: Convert to speech
-            with st.spinner("Converting summary to speech..."):
-                audio_file = text_to_speech(summary, language=detected_lang)
+            with st.spinner("Converting to speech..."):
+                audio_filename = f"summary.{audio_format}"
+                audio_file = text_to_speech(summary, detected_lang, audio_filename)
 
             st.markdown('<div class="step-box">Audio conversion completed!</div>', unsafe_allow_html=True)
-            st.success("✅ Processing complete!")
+            st.success("✅ Done!")
 
-            # Step 5: Audio player & download link
-            st.audio(audio_file, format="audio/mp3")
+            st.audio(audio_file, format=f"audio/{audio_format}")
             download_link = create_audio_download_link(audio_file)
             st.markdown(download_link, unsafe_allow_html=True)
 
-            # Cleanup - optional: remove audio file after streaming
             try:
                 os.remove(audio_file)
             except Exception:
