@@ -103,7 +103,7 @@ def save_transcript(summary):
 
 def show_wordcloud_img(text):
     wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
-    st.image(wordcloud.to_array(), caption='WordCloud of PDF Content', use_column_width=True)
+    st.image(wordcloud.to_array(), caption='WordCloud of PDF Content', use_container_width=True)
 
 # ====== MAIN UI ======
 st.markdown('<p class="header-text">PDF to Audio Summary</p>', unsafe_allow_html=True)
