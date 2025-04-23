@@ -86,7 +86,7 @@ with st.sidebar:
     
     # === FEATURE 2: Voice Selection Options ===
     st.header("Voice Options")
-    #voice_gender = st.radio("Voice type:", ["Female", "Male"], horizontal=True)
+    voice_gender = st.radio("Voice type:", ["Female", "Male"], horizontal=True)
     voice_style = st.select_slider("Speaking style:", 
                                   options=["Formal", "Standard", "Casual", "Enthusiastic"])
     speech_speed = st.slider("Speaking speed:", min_value=0.5, max_value=2.0, value=1.0, step=0.1)
