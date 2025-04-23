@@ -32,7 +32,7 @@ st.markdown("""
     .header-text { font-weight: 700; font-size: 2rem; color: #1e293b; }
     .subheader-text { font-weight: 600; color: #475569; margin-bottom: 1.5rem; }
     .footer-text { color: #94a3b8; font-size: 0.9rem; margin-top: 3rem; text-align: center; }
-    .insight-box { background: #ecfdf5; padding: 0.8rem; border-radius: 8px; 
+    .insight-box { background: #0f2d42; padding: 0.8rem; border-radius: 8px; 
                   margin: 5px 0; border-left: 4px solid #10b981; }
     .citation-box { background: #f9fafb; padding: 1rem; border-radius: 8px;
                   border: 1px solid #e5e7eb; font-family: monospace; }
